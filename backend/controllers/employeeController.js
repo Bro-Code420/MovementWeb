@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import sanitizeEmployee from "../utils/sanitizeEmployee.js";
 import { archiveForRecycleBin } from "../utils/archiveForRecycleBin.js";
+import { encryptPassword, decryptPassword } from "../utils/cryptoUtils.js";
 
 const addEmployee = async (req, res) => {
   const { name, role } = req.body;
@@ -149,6 +150,7 @@ const createEmployee = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const encryptedPassword = encryptPassword(password);
 
     const employee = await Employee.create({
       personalDetails: {
@@ -160,6 +162,7 @@ const createEmployee = async (req, res) => {
         contactNumber,
         email,
         password: hashedPassword,
+        encryptedPassword,
         workingBranch,
         status,
         employeeType,
@@ -233,7 +236,7 @@ const updateEmployee = async (req, res) => {
     } = req.body;
 
     const employeeExist = await Employee.findById(req.params.id).select(
-      "+personalDetails.password",
+      "+personalDetails.password +personalDetails.encryptedPassword",
     );
     if (!employeeExist) {
       return res.status(404).json({
@@ -249,6 +252,10 @@ const updateEmployee = async (req, res) => {
       ? await bcrypt.hash(password, 10)
       : employeeExist.personalDetails.password;
 
+    const nextEncryptedPassword = password
+      ? encryptPassword(password)
+      : employeeExist.personalDetails.encryptedPassword;
+
     const employee = await Employee.findByIdAndUpdate(req.params.id, {
       personalDetails: {
         employeeId,
@@ -259,6 +266,7 @@ const updateEmployee = async (req, res) => {
         contactNumber,
         email,
         password: nextPassword,
+        encryptedPassword: nextEncryptedPassword,
         workingBranch,
         status,
         employeeType,
@@ -319,7 +327,7 @@ const loginEmployee = async (req, res) => {
 
     const employee = await Employee.findOne({
       "personalDetails.email": email,
-    }).select("+personalDetails.password");
+    }).select("+personalDetails.password +personalDetails.encryptedPassword");
 
     if (!employee) {
       return res.status(404).json({
@@ -359,6 +367,17 @@ const loginEmployee = async (req, res) => {
       });
     }
 
+    // Populate encryptedPassword if missing, so admin can securely view it
+    if (!employee.personalDetails?.encryptedPassword) {
+      const enc = encryptPassword(password);
+      if (enc) {
+        await Employee.updateOne(
+          { _id: employee._id },
+          { $set: { "personalDetails.encryptedPassword": enc } },
+        );
+      }
+    }
+
     const token = jwt.sign({ id: employee._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
@@ -377,6 +396,85 @@ const loginEmployee = async (req, res) => {
   }
 };
 
+/**
+ * Double-Lock password reveal: Admin confirms their own admin password
+ * before decrypting and viewing the employee's credentials.
+ */
+const revealEmployeePassword = async (req, res) => {
+  try {
+    const { adminPassword } = req.body;
+    if (!adminPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin password is required to reveal this credential",
+      });
+    }
+
+    // 1. Verify caller is the admin and check admin password
+    const admin = await Employee.findById(req.id).select("+personalDetails.password");
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin account not found" });
+    }
+
+    const storedAdminPass = admin.personalDetails?.password;
+    const isHashed = /^\$2[aby]\$/.test(storedAdminPass);
+    const validAdmin = isHashed
+      ? await bcrypt.compare(adminPassword, storedAdminPass)
+      : storedAdminPass === adminPassword;
+
+    if (!validAdmin) {
+      return res.status(401).json({
+        success: false,
+        message: "Incorrect admin password. Verification failed.",
+      });
+    }
+
+    // 2. Fetch the target employee's encrypted password
+    const targetEmployee = await Employee.findById(req.params.id).select(
+      "+personalDetails.password +personalDetails.encryptedPassword",
+    );
+
+    if (!targetEmployee) {
+      return res.status(404).json({ success: false, message: "Employee not found" });
+    }
+
+    // Check if reversible encrypted copy exists
+    if (targetEmployee.personalDetails?.encryptedPassword) {
+      const decrypted = decryptPassword(targetEmployee.personalDetails.encryptedPassword);
+      if (decrypted) {
+        return res.status(200).json({
+          success: true,
+          password: decrypted,
+        });
+      }
+    }
+
+    // Check if legacy plaintext password exists
+    const stored = targetEmployee.personalDetails?.password;
+    if (stored && !/^\$2[aby]\$/.test(stored)) {
+      return res.status(200).json({
+        success: true,
+        password: stored,
+      });
+    }
+
+    // If only one-way bcrypt hash is present
+    return res.status(200).json({
+      success: true,
+      isHashedOnly: true,
+      message:
+        "This employee password was created with a legacy one-way hash and cannot be decoded. You can set a new password by clicking 'Edit details'.",
+    });
+  } catch (error) {
+    console.error("Error in revealEmployeePassword:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 export {
   createEmployee,
   addEmployee,
@@ -386,4 +484,5 @@ export {
   updateEmployee,
   deleteEmployeeById,
   loginEmployee,
+  revealEmployeePassword,
 };

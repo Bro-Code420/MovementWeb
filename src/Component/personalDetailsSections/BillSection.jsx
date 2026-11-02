@@ -359,16 +359,27 @@ const BillSection = ({ fetchData, billing, patientDetail, attendance }) => {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("webapptoken");
+
       const response = await fetch(`${API}/api/report/bill/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { token, Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ paymentStatus: newStatus }),
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        result = null;
+      }
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Unable to update payment status");
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || "Unable to update payment status");
       }
 
       await fetchData();
@@ -390,15 +401,26 @@ const BillSection = ({ fetchData, billing, patientDetail, attendance }) => {
     setDeletingId(bill._id);
 
     try {
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("webapptoken");
+
       const response = await fetch(`${API}/api/report/bill/${bill._id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { token, Authorization: `Bearer ${token}` } : {}),
+        },
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        result = null;
+      }
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "Unable to delete invoice");
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || "Unable to delete invoice");
       }
 
       alert("Invoice deleted successfully.");

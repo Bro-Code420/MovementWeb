@@ -1,5 +1,21 @@
 import express from 'express';
-import { createBill, createExpenses , createInventory , createRent ,createSalary , getBill , getExpenses , getInventory , getRent , getSalary, getSummary, updateBillPaymentStatus, updateRentStatus, updateSalaryPaidStatus} from '../controllers/reportsController.js';
+import {
+  createBill,
+  getBill,
+  deleteBill,
+  createExpenses,
+  createInventory,
+  createRent,
+  createSalary,
+  getExpenses,
+  getInventory,
+  getRent,
+  getSalary,
+  getSummary,
+  updateBillPaymentStatus,
+  updateRentStatus,
+  updateSalaryPaidStatus,
+} from '../controllers/reportsController.js';
 
 import employeeAuth from '../middleware/employeeAuth.js';
 import adminOnly from '../middleware/adminOnly.js';
@@ -22,5 +38,6 @@ reportRouter.get("/summary", employeeAuth, adminOnly, getSummary);
 reportRouter.put("/rent/:id", employeeAuth, adminOnly, updateRentStatus);
 reportRouter.put("/salary/:entryId/:empId", employeeAuth, adminOnly, updateSalaryPaidStatus);
 reportRouter.put("/bill/:id", employeeAuth, updateBillPaymentStatus);
+reportRouter.delete("/bill/:id", employeeAuth, deleteBill);
 
 export default reportRouter;

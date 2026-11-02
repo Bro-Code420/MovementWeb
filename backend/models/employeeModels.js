@@ -41,6 +41,10 @@ const EmployeeSchema = new mongoose.Schema(
         required: true,
         select: false, // never returned unless explicitly re-selected
       },
+      encryptedPassword: {
+        type: String,
+        select: false, // AES-256 encrypted password for double-locked admin reveal
+      },
       workingBranch: { type: String, required: true },
       status: {
         type: String,

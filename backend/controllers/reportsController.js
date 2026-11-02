@@ -162,13 +162,32 @@ const deleteBill = async (req, res) => {
   try {
     const id = req.params.id;
     const bill = await billModel.findByIdAndDelete(id);
+
+    if (!bill) {
+      return res.status(404).json({
+        success: false,
+        message: "Bill not found",
+      });
+    }
+
+    // Clean up reference in patient's billing array
+    if (bill.patientId) {
+      await Patient.findByIdAndUpdate(bill.patientId, {
+        $pull: { billing: bill._id },
+      });
+    }
+    await Patient.updateMany(
+      { billing: id },
+      { $pull: { billing: id } }
+    );
+
     res.status(200).json({
       success: true,
       message: "Bill deleted successfully",
       data: bill,
     });
   } catch (err) {
-    console.log(err);
+    console.log("Delete bill error:", err);
     res.status(400).json({
       success: false,
       message: "Failed to delete bill",
@@ -637,6 +656,7 @@ const getSummary = async (req, res) => {
 export {
   createBill,
   getBill,
+  deleteBill,
   getSummary,
   updateBillPaymentStatus,
   createExpenses,

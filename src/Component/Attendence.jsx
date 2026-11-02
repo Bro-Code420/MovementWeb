@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
+import {
+  FaWhatsapp,
+  FaTimes,
+  FaCopy,
+  FaCheck,
+  FaDownload,
+  FaShareAlt,
+  FaPaperPlane,
+} from "react-icons/fa";
 
 const API = import.meta.env.VITE_BACKEND_URL;
 
@@ -17,10 +26,10 @@ const todayIso = () => {
 const clockTime = (value) =>
   value
     ? new Date(value).toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "Asia/Kolkata",
-      })
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Kolkata",
+    })
     : null;
 
 const worked = (inTime, outTime) => {
@@ -66,6 +75,13 @@ export default function AttendancePage() {
   // Authenticator setup dialog: { row, qrDataUrl, manualKey, error, busy }
   const [setup, setSetup] = useState(null);
   const [setupCode, setSetupCode] = useState("");
+
+  // WhatsApp Share Dialog State
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [targetPhone, setTargetPhone] = useState(
+    () => localStorage.getItem("movement_rehab_whatsapp_phone") || "",
+  );
+  const [copiedSummary, setCopiedSummary] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -232,29 +248,44 @@ export default function AttendancePage() {
   // The text that lands in the WhatsApp chat. The PDF carries the detail; this
   // is the at-a-glance summary that shows in the chat list itself.
   const message = useMemo(() => {
-    const head =
-      mode === "day"
-        ? `*Movement Rehab* - Staff attendance\n${prettyDate(date)}`
-        : `*Movement Rehab* - Staff attendance\n${prettyMonth(month)}`;
+    const isDay = mode === "day";
+    const head = isDay
+      ? `🏥 *Movement Rehab - Staff Attendance*\n📅 ${prettyDate(date)}`
+      : `🏥 *Movement Rehab - Staff Attendance Summary*\n📅 ${prettyMonth(month)}`;
 
-    if (mode === "day") {
-      const lines = filtered.map((r) => {
+    let text = `${head}\n\n📊 *Summary:*`;
+    text += `\n• Present: ${totals.present}`;
+    text += `\n• Absent: ${totals.absent}`;
+    text += `\n• Leave: ${totals.leave}`;
+    text += `\n• ${isDay ? "Not Marked" : "Late"}: ${totals.fourth}\n`;
+    text += `\n👥 *Staff List:*`;
+
+    if (isDay) {
+      filtered.forEach((r) => {
         const inAt = clockTime(r.inTime);
         if (inAt) {
           const outAt = clockTime(r.outTime);
-          return `• ${r.name}: ${inAt}${outAt ? ` - ${outAt}` : " (still in)"}${r.late ? " (late)" : ""}`;
+          const icon = r.late ? "⏳" : "✅";
+          text += `\n${icon} *${r.name}*: ${inAt}${outAt ? ` - ${outAt}` : " (in clinic)"}${r.late ? " (Late)" : ""}`;
+        } else {
+          const icon =
+            r.status === "Absent"
+              ? "❌"
+              : r.status === "Leave"
+                ? "🟡"
+                : "⚪";
+          text += `\n${icon} *${r.name}*: ${r.status || "Not marked"}`;
         }
-        return `• ${r.name}: ${r.status || "not marked"}`;
       });
-      return `${head}\n\n${lines.join("\n")}`;
+    } else {
+      filtered.forEach((s) => {
+        text += `\n• *${s.name}*: ${s.present} Present, ${s.absent} Absent, ${s.leave} Leave${s.late ? `, ${s.late} Late` : ""}`;
+      });
     }
 
-    const lines = filtered.map(
-      (s) =>
-        `• ${s.name}: ${s.present} present, ${s.absent} absent, ${s.leave} leave${s.late ? `, ${s.late} late` : ""}`,
-    );
-    return `${head}\n\n${lines.join("\n")}`;
-  }, [mode, date, month, filtered]);
+    text += `\n\n_Movement Rehab Clinic Management_`;
+    return text;
+  }, [mode, date, month, filtered, totals]);
 
   const buildPdf = () => {
     const doc = new jsPDF();
@@ -412,40 +443,67 @@ export default function AttendancePage() {
 
   const downloadPdf = () => buildPdf().save(fileName);
 
-  // On a phone this opens the share sheet with the PDF attached, so WhatsApp
-  // receives the real file. A browser cannot attach a file to a wa.me link, so
-  // on a computer the PDF downloads and WhatsApp opens with the text to paste.
-  const shareWhatsApp = async () => {
-    setNotice("");
-    const file = new File([buildPdf().output("blob")], fileName, {
-      type: "application/pdf",
-    });
+  const handleCopySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopiedSummary(true);
+      setTimeout(() => setCopiedSummary(false), 2000);
+      setNotice("Summary copied to clipboard.");
+    } catch {
+      setNotice("Could not copy the summary.");
+    }
+  };
 
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
+  const handleSendWhatsApp = (customNumber = null) => {
+    const phoneToUse = customNumber !== null ? customNumber : targetPhone;
+    let cleanPhone = (phoneToUse || "").replace(/\D/g, "");
+    if (cleanPhone.length === 10) {
+      cleanPhone = `91${cleanPhone}`;
+    }
+
+    if (targetPhone.trim()) {
+      localStorage.setItem("movement_rehab_whatsapp_phone", targetPhone.trim());
+    }
+
+    // Auto copy text
+    try {
+      navigator.clipboard.writeText(message);
+    } catch { }
+
+    // Build URL
+    const url = cleanPhone
+      ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+
+    window.open(url, "_blank", "noopener,noreferrer");
+    setNotice(
+      cleanPhone
+        ? `WhatsApp opened for +${cleanPhone}.`
+        : "WhatsApp opened with attendance summary.",
+    );
+    setShowWhatsAppModal(false);
+  };
+
+  const handleNativeShare = async () => {
+    setNotice("");
+    try {
+      const file = new File([buildPdf().output("blob")], fileName, {
+        type: "application/pdf",
+      });
+      if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: "Staff attendance",
           text: message,
         });
+        setShowWhatsAppModal(false);
         return;
-      } catch (err) {
-        if (err?.name === "AbortError") return;
       }
+    } catch (err) {
+      if (err?.name === "AbortError") return;
     }
-
-    buildPdf().save(fileName);
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener");
-    setNotice("PDF downloaded and WhatsApp opened - attach the file in the chat.");
-  };
-
-  const copyMessage = async () => {
-    try {
-      await navigator.clipboard.writeText(message);
-      setNotice("Summary copied.");
-    } catch {
-      setNotice("Could not copy the summary.");
-    }
+    // Fallback if not supported
+    handleSendWhatsApp();
   };
 
   /* ---------- render ---------- */
@@ -470,11 +528,10 @@ export default function AttendancePage() {
                 key={value}
                 type="button"
                 onClick={() => setMode(value)}
-                className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${
-                  mode === value
+                className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${mode === value
                     ? "bg-white text-slate-900 shadow-sm"
                     : "text-slate-500 hover:text-slate-700"
-                }`}
+                  }`}
               >
                 {label}
               </button>
@@ -512,27 +569,34 @@ export default function AttendancePage() {
           <div className="ml-auto flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={copyMessage}
+              onClick={handleCopySummary}
               disabled={!filtered.length}
-              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition active:scale-95 disabled:opacity-40"
             >
-              Copy summary
+              {copiedSummary ? (
+                <FaCheck className="text-emerald-600 text-xs" />
+              ) : (
+                <FaCopy className="text-xs" />
+              )}
+              <span>{copiedSummary ? "Copied" : "Copy summary"}</span>
             </button>
             <button
               type="button"
               onClick={downloadPdf}
               disabled={!filtered.length}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 px-4 py-2 text-sm font-semibold text-white transition active:scale-95 disabled:opacity-40"
             >
-              Download PDF
+              <FaDownload className="text-xs" />
+              <span>Download PDF</span>
             </button>
             <button
               type="button"
-              onClick={shareWhatsApp}
+              onClick={() => setShowWhatsAppModal(true)}
               disabled={!filtered.length}
-              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition active:scale-95 disabled:opacity-40"
             >
-              Send on WhatsApp
+              <FaWhatsapp className="text-base" />
+              <span>Send on WhatsApp</span>
             </button>
           </div>
         </div>
@@ -661,11 +725,10 @@ export default function AttendancePage() {
                                   onChange={(e) =>
                                     e.target.value && mark(row, e.target.value)
                                   }
-                                  className={`rounded-lg border px-2.5 py-1.5 text-sm font-medium ring-1 ring-inset focus:outline-none ${
-                                    row.status
+                                  className={`rounded-lg border px-2.5 py-1.5 text-sm font-medium ring-1 ring-inset focus:outline-none ${row.status
                                       ? STATUS_STYLES[row.status]
                                       : "border-slate-300 bg-white text-slate-500 ring-transparent"
-                                  }`}
+                                    }`}
                                 >
                                   <option value="">Not marked</option>
                                   <option value="Present">Present</option>
@@ -681,11 +744,10 @@ export default function AttendancePage() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <span
-                                className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${
-                                  row.authenticator
+                                className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${row.authenticator
                                     ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
                                     : "bg-slate-50 text-slate-500 ring-slate-200"
-                                }`}
+                                  }`}
                               >
                                 {row.authenticator ? "Active" : "Not set up"}
                               </span>
@@ -809,6 +871,116 @@ export default function AttendancePage() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* ================= WHATSAPP SHARE MODAL ================= */}
+        {showWhatsAppModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+            <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shadow-xs">
+                    <FaWhatsapp />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      Share Attendance on WhatsApp
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {mode === "day" ? prettyDate(date) : prettyMonth(month)} • {filtered.length} Staff records
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowWhatsAppModal(false)}
+                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg transition"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                {/* Target Number */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Send to WhatsApp Number
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      value={targetPhone}
+                      onChange={(e) => setTargetPhone(e.target.value)}
+                      placeholder="e.g. 9876543210 (Leave blank to pick chat in WhatsApp)"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 shadow-xs focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+                    />
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    If empty, WhatsApp will let you search and select any contact or group.
+                  </p>
+                </div>
+
+                {/* Formatted Message Preview */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Message Preview
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleCopySummary}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 transition"
+                    >
+                      {copiedSummary ? (
+                        <>
+                          <FaCheck className="text-[10px]" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <FaCopy className="text-[10px]" />
+                          <span>Copy text</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 max-h-44 overflow-y-auto text-xs font-mono text-slate-800 whitespace-pre-wrap leading-relaxed">
+                    {message}
+                  </div>
+                </div>
+
+                {/* Tip note */}
+                <div className="rounded-xl bg-emerald-50/70 border border-emerald-100 p-3 text-xs text-emerald-900 leading-normal">
+                  <p className="font-semibold mb-0.5">💬 WhatsApp Message:</p>
+                  <p className="text-emerald-800">
+                    Clicking below directly opens WhatsApp with the formatted attendance summary ready to send.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowWhatsAppModal(false)}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200/60 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSendWhatsApp()}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition active:scale-95"
+                >
+                  <FaWhatsapp className="text-sm" />
+                  <span>Send to WhatsApp</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

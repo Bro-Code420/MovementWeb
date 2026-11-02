@@ -586,6 +586,9 @@ import {
   FaEyeSlash,
   FaLock,
   FaCamera,
+  FaCopy,
+  FaCheck,
+  FaTimes,
 } from "react-icons/fa";
 import AttendanceSection from "./employeePersonalDetails/AttendanceSection";
 
@@ -741,11 +744,101 @@ const EmployeeDetails = () => {
   const [personalForm, setPersonalForm] = useState({});
   const [toast, setToast] = useState(null); // { type: "success" | "error", text }
 
+  // Double-Lock Password Reveal States
+  const [revealedPassword, setRevealedPassword] = useState(null);
+  const [showDoubleLockModal, setShowDoubleLockModal] = useState(false);
+  const [adminPasswordInput, setAdminPasswordInput] = useState("");
+  const [showAdminPasswordInput, setShowAdminPasswordInput] = useState(false);
+  const [adminPasswordError, setAdminPasswordError] = useState("");
+  const [verifyingPassword, setVerifyingPassword] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setToast(null), 4500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Auto-hide countdown timer for revealed password (30s)
+  useEffect(() => {
+    if (!revealedPassword || countdown <= 0) return undefined;
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          setRevealedPassword(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [revealedPassword, countdown]);
+
+  const handleCopyPassword = () => {
+    if (!revealedPassword) return;
+    navigator.clipboard.writeText(revealedPassword);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRevealSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!adminPasswordInput.trim()) {
+      setAdminPasswordError("Please enter your admin password.");
+      return;
+    }
+
+    setVerifyingPassword(true);
+    setAdminPasswordError("");
+
+    try {
+      const token =
+        localStorage.getItem("token") || localStorage.getItem("webapptoken");
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/employee/revealPassword/${id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token,
+          },
+          body: JSON.stringify({ adminPassword: adminPasswordInput }),
+        },
+      );
+
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        if (data.isHashedOnly) {
+          setShowDoubleLockModal(false);
+          setAdminPasswordInput("");
+          setToast({
+            type: "error",
+            text:
+              data.message ||
+              "Password is an older one-way hash and cannot be decoded. Please click 'Edit details' to set a new password.",
+          });
+        } else {
+          setRevealedPassword(data.password);
+          setCountdown(30);
+          setShowDoubleLockModal(false);
+          setAdminPasswordInput("");
+          setToast({
+            type: "success",
+            text: "Password revealed. It will automatically hide in 30 seconds.",
+          });
+        }
+      } else {
+        setAdminPasswordError(data?.message || "Incorrect admin password.");
+      }
+    } catch (err) {
+      console.error("Error revealing password:", err);
+      setAdminPasswordError("Network or server error. Please try again.");
+    } finally {
+      setVerifyingPassword(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -757,7 +850,9 @@ const EmployeeDetails = () => {
         {
           headers: {
             "Content-Type": "application/json",
-            token: localStorage.getItem("token"),
+            token:
+              localStorage.getItem("token") ||
+              localStorage.getItem("webapptoken"),
           },
         },
       );
@@ -798,7 +893,6 @@ const EmployeeDetails = () => {
       !f.employeeType ||
       !f.contactNumber ||
       !f.email ||
-      !f.password ||
       !f.workingBranch ||
       !f.status ||
       !f.joiningDate
@@ -940,7 +1034,9 @@ const EmployeeDetails = () => {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            token: localStorage.getItem("token"),
+            token:
+              localStorage.getItem("token") ||
+              localStorage.getItem("webapptoken"),
           },
           body: JSON.stringify(payload),
         },
@@ -950,6 +1046,10 @@ const EmployeeDetails = () => {
       if (result?.success) {
         setEmployeeDetail(result?.employee);
         setIsEditingPersonal(false);
+        if (personalForm.password) {
+          setRevealedPassword(personalForm.password);
+          setCountdown(30);
+        }
         setToast({ type: "success", text: "Employee details saved." });
         fetchData();
       } else {
@@ -1164,15 +1264,86 @@ const EmployeeDetails = () => {
             editable={editing}
           />
           <Field label="Email" value={f.email} />
-          <Field
-            label="Password"
-            name="password"
-            value={f.password}
-            onChange={handlePersonalChange}
-            editable={editing}
-            secret
-            hideWhileEditing
-          />
+
+          {/* Password (Confidential Double-Lock Reveal in View Mode / Protected Input in Edit Mode) */}
+          <div className="flex flex-col">
+            <span className="mb-1 text-xs text-slate-500">Password</span>
+            {editing ? (
+              <div className="relative">
+                <input
+                  type={showEditPassword ? "text" : "password"}
+                  name="password"
+                  value={f.password ?? ""}
+                  onChange={handlePersonalChange}
+                  placeholder="Leave blank to keep current"
+                  autoComplete="new-password"
+                  className={`${FIELD} pr-10`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowEditPassword((prev) => !prev)}
+                  aria-label={showEditPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                >
+                  {showEditPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {revealedPassword ? (
+                  <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50/90 px-3 py-1.5 text-emerald-950 shadow-xs">
+                    <span className="font-mono text-sm font-bold tracking-wider">
+                      {revealedPassword}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyPassword}
+                      className="p-1 text-slate-500 hover:text-blue-700 transition rounded"
+                      title="Copy password"
+                    >
+                      {copied ? (
+                        <FaCheck className="text-emerald-600 text-xs" />
+                      ) : (
+                        <FaCopy className="text-xs" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRevealedPassword(null)}
+                      className="p-1 text-slate-400 hover:text-rose-600 transition rounded"
+                      title="Hide password"
+                    >
+                      <FaEyeSlash className="text-xs" />
+                    </button>
+                    {countdown > 0 && (
+                      <span className="border-l border-emerald-200 pl-2 text-[10px] font-mono font-medium text-emerald-700">
+                        {countdown}s
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2.5">
+                    <span className="text-sm font-extrabold tracking-widest text-slate-400 select-none">
+                      ••••••••
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminPasswordInput("");
+                        setAdminPasswordError("");
+                        setShowDoubleLockModal(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/80 px-2.5 py-1 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 hover:border-blue-300 transition active:scale-95"
+                      title="Requires Admin Password Verification"
+                    >
+                      <FaLock className="text-[10px]" />
+                      <span>Reveal</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           <Field
             label="Working branch"
             name="workingBranch"
@@ -1517,6 +1688,108 @@ const EmployeeDetails = () => {
         personalDetails={personalDetails}
         id={id}
       />
+
+      {/* ================= DOUBLE-LOCK ADMIN PASSWORD MODAL ================= */}
+      {showDoubleLockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-600/10 text-blue-700 flex items-center justify-center font-bold">
+                  <FaLock />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Admin Verification
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Confidential Credential Access
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDoubleLockModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg transition"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <form onSubmit={handleRevealSubmit} className="p-5 space-y-4">
+              <p className="text-sm text-slate-600">
+                To view the password for{" "}
+                <strong className="text-slate-900 font-semibold">
+                  {f.fullName || "this employee"}
+                </strong>
+                , please enter your Admin password to confirm authorization.
+              </p>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Your Admin Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showAdminPasswordInput ? "text" : "password"}
+                    value={adminPasswordInput}
+                    onChange={(e) => {
+                      setAdminPasswordInput(e.target.value);
+                      setAdminPasswordError("");
+                    }}
+                    placeholder="Enter your admin password"
+                    autoFocus
+                    autoComplete="current-password"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 shadow-xs focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/10 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowAdminPasswordInput(!showAdminPasswordInput)
+                    }
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-sm"
+                  >
+                    {showAdminPasswordInput ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+                {adminPasswordError && (
+                  <p className="mt-2 text-xs text-rose-600 font-medium">
+                    {adminPasswordError}
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowDoubleLockModal(false)}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                  disabled={verifyingPassword}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={verifyingPassword || !adminPasswordInput.trim()}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition disabled:opacity-50"
+                >
+                  {verifyingPassword ? (
+                    <>
+                      <FaSpinner className="animate-spin text-xs" />
+                      <span>Verifying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaLock className="text-xs" />
+                      <span>Verify & Reveal</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

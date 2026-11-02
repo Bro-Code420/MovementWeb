@@ -11,6 +11,7 @@ const sanitizeEmployee = (employee) => {
 
   if (plain.personalDetails) {
     delete plain.personalDetails.password;
+    delete plain.personalDetails.encryptedPassword;
   }
   if (plain.totp) {
     plain.totp = {

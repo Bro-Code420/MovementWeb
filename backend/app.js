@@ -12,6 +12,8 @@ import treatmentPlanRouter from "./routes/treatmentPlanRoute.js";
 import attendanceRouter from "./routes/attendanceRoute.js";
 import connectDb from "./config/mongodb.js";
 import recycleBinRouter from "./routes/recycleBinRoute.js";
+import { deleteBill } from "./controllers/reportsController.js";
+import employeeAuth from "./middleware/employeeAuth.js";
 
 //App config
 const app = express();
@@ -78,5 +80,7 @@ app.use("/api/treatmentPlan", treatmentPlanRouter);
 app.use("/api/attendance",attendanceRouter );
 app.use("/api/recycle-bin", recycleBinRouter);
 
+// Alias route for bill deletion
+app.delete("/api/bill/deleteBill/:id", employeeAuth, deleteBill);
 
 export default app;

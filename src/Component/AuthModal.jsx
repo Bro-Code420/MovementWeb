@@ -60,6 +60,7 @@ const AuthModal = ({ onClose, onAuthSuccess, setRole }) => {
 
       if (data?.token) {
         localStorage.setItem("webapptoken", data?.token);
+        localStorage.setItem("token", data?.token);
         localStorage.setItem("loginEmployeeData", JSON.stringify(data?.employee));
       }
       if (data?.employee) {

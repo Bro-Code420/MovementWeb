@@ -14,7 +14,11 @@ import Employee from "../models/employeeModels.js";
  */
 const employeeAuth = async (req, res, next) => {
   try {
-    const token = req.headers.token;
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : authHeader;
+    const token = req.headers.token || bearerToken || req.query?.token;
     if (!token) {
       return res.status(401).json({
         success: false,

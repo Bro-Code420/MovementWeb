@@ -1129,15 +1129,17 @@ import { fetchReport, MONTHS, YEARS, formatINR } from "../utils/reportFetch";
 
 const PAGE_SIZE = 10;
 
-const UPDATE_BILL_PATH = (id) => `/api/bill/updateBill/${id}`;
-const DELETE_BILL_PATH = (id) => `/api/bill/deleteBill/${id}`;
+const UPDATE_BILL_PATH = (id) => `/api/report/bill/${id}`;
+const DELETE_BILL_PATH = (id) => `/api/report/bill/${id}`;
 
 const billApi = async (path, method, body) => {
+  const token =
+    localStorage.getItem("token") || localStorage.getItem("webapptoken");
   const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${path}`, {
     method,
     headers: {
       "Content-Type": "application/json",
-      token: localStorage.getItem("token"),
+      ...(token ? { token, Authorization: `Bearer ${token}` } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });

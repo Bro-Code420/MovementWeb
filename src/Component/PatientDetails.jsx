@@ -20,7 +20,9 @@ const PatientDetails = () => {
         {
           headers: {
             "Content-Type": "application/json",
-            token: localStorage.getItem("token"),
+            token:
+              localStorage.getItem("token") ||
+              localStorage.getItem("webapptoken"),
           },
         }
       );

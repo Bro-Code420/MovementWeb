@@ -1,5 +1,15 @@
 import express from "express";
-import {createEmployee , addEmployee, getAllEmployee, updateAttendance  , getEmployeeById , updateEmployee , deleteEmployeeById , loginEmployee} from "../controllers/employeeController.js";
+import {
+  createEmployee,
+  addEmployee,
+  getAllEmployee,
+  updateAttendance,
+  getEmployeeById,
+  updateEmployee,
+  deleteEmployeeById,
+  loginEmployee,
+  revealEmployeePassword,
+} from "../controllers/employeeController.js";
 import employeeAuth from "../middleware/employeeAuth.js";
 import adminOnly from "../middleware/adminOnly.js";
 const router = express.Router();
@@ -24,6 +34,9 @@ router.get("/getEmployeeById/:id", employeeAuth, adminOnly, getEmployeeById);
 
 // update by id
 router.put("/updateEmployee/:id", employeeAuth, adminOnly, updateEmployee);
+
+// reveal employee password (double-lock: requires admin password verification)
+router.post("/revealPassword/:id", employeeAuth, adminOnly, revealEmployeePassword);
 
 // delete employee
 router.delete("/deleteEmployee/:id", employeeAuth, adminOnly, deleteEmployeeById);
