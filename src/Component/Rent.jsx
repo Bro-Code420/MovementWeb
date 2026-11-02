@@ -1,7 +1,8 @@
 
 
 
-// import { useState, useEffect, useCallback } from "react";
+
+// import { Fragment, useState, useEffect, useCallback } from "react";
 // import { PDFDownloadLink } from "@react-pdf/renderer";
 // import RentReportPdf from "../Component/pdf/RentReportPdf.jsx";
 // import {
@@ -51,6 +52,39 @@
 // };
 
 // const STATUS_KEYS = ["Paid", "Unpaid", "Pending"];
+
+// const PAYMENT_MODES = [
+//   "Cash",
+//   "UPI",
+//   "Bank transfer",
+//   "Cheque",
+//   "Card",
+//   "Other",
+// ];
+
+// // Today as YYYY-MM-DD in the local time zone (for date inputs).
+// const todayStr = () =>
+//   new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+//     .toISOString()
+//     .slice(0, 10);
+
+// const dateInputValue = (v) => (v ? String(v).slice(0, 10) : "");
+
+// const formatDate = (v) =>
+//   v && !isNaN(new Date(v).getTime())
+//     ? new Date(v).toLocaleDateString("en-IN")
+//     : "-";
+
+// // Whole days between the due date and the payment date (0 if on time).
+// const daysLate = (item) => {
+//   if (!item.paymentDate || !item.dueDate) return 0;
+//   const diff = Math.round(
+//     (new Date(dateInputValue(item.paymentDate)) -
+//       new Date(dateInputValue(item.dueDate))) /
+//       86400000,
+//   );
+//   return diff > 0 ? diff : 0;
+// };
 
 // const formatMonth = (value) => {
 //   // The form saves "YYYY-MM"; show it as "Mar 2026". Anything else is shown as-is.
@@ -139,6 +173,8 @@
 //   const [dueDate, setDueDate] = useState("");
 //   const [status, setStatus] = useState("Unpaid");
 //   const [notes, setNotes] = useState("");
+//   const [paymentMode, setPaymentMode] = useState("");
+//   const [paymentDate, setPaymentDate] = useState("");
 //   const [selectedMonth, setSelectedMonth] = useState("");
 //   const [selectedYear, setSelectedYear] = useState("");
 //   const [selectedStatus, setSelectedStatus] = useState("");
@@ -149,6 +185,8 @@
 
 //   const [editId, setEditId] = useState(null);
 //   const [updateStatus, setUpdateStatus] = useState(null);
+//   const [updateMode, setUpdateMode] = useState("");
+//   const [updateDate, setUpdateDate] = useState("");
 
 //   const [toast, setToast] = useState(null); // { type: "success" | "error", text }
 
@@ -223,7 +261,16 @@
 
 //   const handleSubmit = async (e) => {
 //     e.preventDefault();
-//     const formData = { propertyName, month, amount, dueDate, status, notes };
+//     // Mode and date of payment only apply to rent that has been paid.
+//     const formData = {
+//       propertyName,
+//       month,
+//       amount,
+//       dueDate,
+//       status,
+//       notes,
+//       ...(status === "Paid" ? { paymentMode, paymentDate } : {}),
+//     };
 //     try {
 //       const response = await fetch(
 //         `${import.meta.env.VITE_BACKEND_URL}/api/report/rent`,
@@ -245,39 +292,74 @@
 //       setDueDate("");
 //       setStatus("Unpaid");
 //       setNotes("");
+//       setPaymentMode("");
+//       setPaymentDate("");
 //     } catch (error) {
 //       console.error("Error:", error);
 //       setToast({ type: "error", text: "Could not save rent. Please try again." });
 //     }
 //   };
 
-//   const handleStatusUpdate = async (id, newStatus) => {
+//   const selectStatus = (key) => {
+//     setStatus(key);
+//     if (key === "Paid") {
+//       setPaymentDate((d) => d || todayStr());
+//     } else {
+//       setPaymentMode("");
+//       setPaymentDate("");
+//     }
+//   };
+
+//   const startEdit = (item) => {
+//     setEditId(item._id);
+//     setUpdateStatus(item.status);
+//     setUpdateMode(item.paymentMode || "");
+//     setUpdateDate(dateInputValue(item.paymentDate));
+//   };
+
+//   const cancelEdit = () => {
+//     setEditId(null);
+//     setUpdateStatus(null);
+//     setUpdateMode("");
+//     setUpdateDate("");
+//   };
+
+//   const changeUpdateStatus = (value) => {
+//     setUpdateStatus(value);
+//     if (value === "Paid") setUpdateDate((d) => d || todayStr());
+//   };
+
+//   const handleUpdate = async (item) => {
+//     const isPaid = updateStatus === "Paid";
 //     try {
 //       const response = await fetch(
-//         `${import.meta.env.VITE_BACKEND_URL}/api/report/rent/${id}`,
+//         `${import.meta.env.VITE_BACKEND_URL}/api/report/rent/${item._id}`,
 //         {
 //           method: "PUT",
 //           headers: { "Content-Type": "application/json" },
-//           body: JSON.stringify({ status: newStatus }),
+//           body: JSON.stringify({
+//             status: updateStatus,
+//             paymentMode: isPaid ? updateMode : "",
+//             paymentDate: isPaid ? updateDate : null,
+//           }),
 //         },
 //       );
 //       const result = await response.json();
 
 //       if (result.success) {
 //         fetchRentData(); // refresh
-//         setToast({ type: "success", text: `Status changed to ${newStatus}.` });
+//         setToast({ type: "success", text: "Rent record updated." });
 //       } else {
 //         setToast({
 //           type: "error",
-//           text: result.message || "Could not update status.",
+//           text: result.message || "Could not update the record.",
 //         });
 //       }
 //     } catch (error) {
 //       console.error("Update failed", error);
-//       setToast({ type: "error", text: "Could not update status." });
+//       setToast({ type: "error", text: "Could not update the record." });
 //     } finally {
-//       setEditId(null);
-//       setUpdateStatus(null);
+//       cancelEdit();
 //     }
 //   };
 
@@ -308,6 +390,10 @@
 //       Month: item.month,
 //       "Due Date": new Date(item.dueDate).toLocaleDateString("en-IN"),
 //       Status: item.status,
+//       "Payment Mode": item.paymentMode || "-",
+//       "Payment Date": item.paymentDate
+//         ? new Date(item.paymentDate).toLocaleDateString("en-IN")
+//         : "-",
 //       Amount: Number(item.amount || 0),
 //       Notes: item.notes || "-",
 //     }));
@@ -550,7 +636,7 @@
 //         <div className="space-y-6 xl:col-span-2">
 //           <Panel
 //             title="Rent records"
-//             description="Select the pencil to change a payment status."
+//             description="Select the pencil to update a payment's status, mode and date."
 //           >
 //             <div className="overflow-x-auto">
 //               <table className="min-w-full text-sm">
@@ -560,6 +646,7 @@
 //                     <th className="px-6 py-3">Month</th>
 //                     <th className="px-6 py-3">Due date</th>
 //                     <th className="px-6 py-3">Status</th>
+//                     <th className="px-6 py-3">Payment</th>
 //                     <th className="px-6 py-3 text-right">Amount</th>
 //                     <th className="w-14 px-6 py-3">
 //                       <span className="sr-only">Actions</span>
@@ -568,110 +655,215 @@
 //                 </thead>
 //                 <tbody className="divide-y divide-slate-100">
 //                   {loading ? (
-//                     <SkeletonRows rows={4} cols={6} />
+//                     <SkeletonRows rows={4} cols={7} />
 //                   ) : error ? (
-//                     <TableMessage colSpan={6} tone="text-rose-600">
+//                     <TableMessage colSpan={7} tone="text-rose-600">
 //                       {error}
 //                     </TableMessage>
 //                   ) : displayedData.length === 0 ? (
-//                     <TableMessage colSpan={6}>
+//                     <TableMessage colSpan={7}>
 //                       No rent records for this period. Add one using the form.
 //                     </TableMessage>
 //                   ) : (
 //                     displayedData.map((item) => {
 //                       const isEditing = editId === item._id;
 //                       const overdue = isOverdue(item);
+//                       const late = daysLate(item);
+//                       const hasPaymentInfo =
+//                         item.status === "Paid" &&
+//                         (item.paymentMode || item.paymentDate);
+
+//                       const isPaidEdit = updateStatus === "Paid";
+//                       const incomplete =
+//                         isPaidEdit && (!updateMode || !updateDate);
+//                       const unchanged =
+//                         updateStatus === item.status &&
+//                         (!isPaidEdit ||
+//                           (updateMode === (item.paymentMode || "") &&
+//                             updateDate === dateInputValue(item.paymentDate)));
+
 //                       return (
-//                         <tr
-//                           key={item._id}
-//                           className="transition-colors hover:bg-slate-50/70"
-//                         >
-//                           <td className="px-6 py-4">
-//                             <div className="flex items-center gap-3">
-//                               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-sm font-semibold text-cyan-800 ring-1 ring-cyan-100">
-//                                 {(item.propertyName || "?")
-//                                   .trim()
-//                                   .charAt(0)
-//                                   .toUpperCase()}
+//                         <Fragment key={item._id}>
+//                           <tr
+//                             className={`transition-colors hover:bg-slate-50/70 ${
+//                               isEditing ? "bg-slate-50/70" : ""
+//                             }`}
+//                           >
+//                             <td className="px-6 py-4">
+//                               <div className="flex items-center gap-3">
+//                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-sm font-semibold text-cyan-800 ring-1 ring-cyan-100">
+//                                   {(item.propertyName || "?")
+//                                     .trim()
+//                                     .charAt(0)
+//                                     .toUpperCase()}
+//                                 </span>
+//                                 <div className="min-w-0">
+//                                   <p className="truncate font-medium text-slate-900">
+//                                     {item.propertyName}
+//                                   </p>
+//                                   {item.notes && (
+//                                     <p className="max-w-[14rem] truncate text-xs text-slate-500">
+//                                       {item.notes}
+//                                     </p>
+//                                   )}
+//                                 </div>
+//                               </div>
+//                             </td>
+//                             <td className="whitespace-nowrap px-6 py-4 text-slate-600">
+//                               {formatMonth(item.month)}
+//                             </td>
+//                             <td className="whitespace-nowrap px-6 py-4">
+//                               <span className="text-slate-600">
+//                                 {formatDate(item.dueDate)}
 //                               </span>
-//                               <div className="min-w-0">
-//                                 <p className="truncate font-medium text-slate-900">
-//                                   {item.propertyName}
-//                                 </p>
-//                                 {item.notes && (
-//                                   <p className="max-w-[14rem] truncate text-xs text-slate-500">
-//                                     {item.notes}
+//                               {overdue && (
+//                                 <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-rose-600">
+//                                   <MdWarningAmber size={14} />
+//                                   Overdue
+//                                 </span>
+//                               )}
+//                             </td>
+//                             <td className="whitespace-nowrap px-6 py-4">
+//                               <StatusPill status={item.status} />
+//                             </td>
+//                             <td className="whitespace-nowrap px-6 py-4">
+//                               {hasPaymentInfo ? (
+//                                 <div>
+//                                   <p className="font-medium text-slate-800">
+//                                     {item.paymentMode || "-"}
+//                                   </p>
+//                                   <p className="text-xs text-slate-500">
+//                                     {formatDate(item.paymentDate)}
+//                                     {late > 0 && (
+//                                       <span className="ml-1.5 font-medium text-amber-700">
+//                                         {late} {late === 1 ? "day" : "days"} late
+//                                       </span>
+//                                     )}
+//                                   </p>
+//                                 </div>
+//                               ) : item.status === "Paid" ? (
+//                                 <span className="text-xs text-slate-400">
+//                                   Not recorded
+//                                 </span>
+//                               ) : (
+//                                 <span className="text-slate-300">-</span>
+//                               )}
+//                             </td>
+//                             <td className="whitespace-nowrap px-6 py-4 text-right font-semibold tabular-nums text-slate-900">
+//                               ₹{formatINR(item.amount)}
+//                             </td>
+//                             <td className="px-6 py-4 text-right">
+//                               <button
+//                                 aria-label={
+//                                   isEditing ? "Cancel editing" : "Edit payment"
+//                                 }
+//                                 onClick={() =>
+//                                   isEditing ? cancelEdit() : startEdit(item)
+//                                 }
+//                                 className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-600/20"
+//                               >
+//                                 {isEditing ? (
+//                                   <MdClose size={18} />
+//                                 ) : (
+//                                   <MdEdit size={18} />
+//                                 )}
+//                               </button>
+//                             </td>
+//                           </tr>
+
+//                           {isEditing && (
+//                             <tr className="bg-slate-50/70">
+//                               <td colSpan={7} className="px-6 pb-5 pt-1">
+//                                 <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 lg:flex-row lg:items-end">
+//                                   <div className="lg:w-44">
+//                                     <Label htmlFor={`edit-status-${item._id}`}>
+//                                       Status
+//                                     </Label>
+//                                     <select
+//                                       id={`edit-status-${item._id}`}
+//                                       value={updateStatus || ""}
+//                                       onChange={(e) =>
+//                                         changeUpdateStatus(e.target.value)
+//                                       }
+//                                       className={FIELD}
+//                                     >
+//                                       {STATUS_KEYS.map((k) => (
+//                                         <option key={k} value={k}>
+//                                           {k}
+//                                         </option>
+//                                       ))}
+//                                     </select>
+//                                   </div>
+
+//                                   {isPaidEdit && (
+//                                     <>
+//                                       <div className="lg:w-44">
+//                                         <Label htmlFor={`edit-mode-${item._id}`}>
+//                                           Mode of payment
+//                                         </Label>
+//                                         <select
+//                                           id={`edit-mode-${item._id}`}
+//                                           value={updateMode}
+//                                           onChange={(e) =>
+//                                             setUpdateMode(e.target.value)
+//                                           }
+//                                           className={FIELD}
+//                                         >
+//                                           <option value="">Select mode</option>
+//                                           {PAYMENT_MODES.map((m) => (
+//                                             <option key={m} value={m}>
+//                                               {m}
+//                                             </option>
+//                                           ))}
+//                                         </select>
+//                                       </div>
+//                                       <div className="lg:w-44">
+//                                         <Label htmlFor={`edit-date-${item._id}`}>
+//                                           Date of payment
+//                                         </Label>
+//                                         <input
+//                                           id={`edit-date-${item._id}`}
+//                                           type="date"
+//                                           max={todayStr()}
+//                                           value={updateDate}
+//                                           onChange={(e) =>
+//                                             setUpdateDate(e.target.value)
+//                                           }
+//                                           className={FIELD}
+//                                         />
+//                                       </div>
+//                                     </>
+//                                   )}
+
+//                                   <div className="flex gap-2 lg:ml-auto">
+//                                     <button
+//                                       type="button"
+//                                       onClick={cancelEdit}
+//                                       className={BTN_OUTLINE}
+//                                     >
+//                                       Cancel
+//                                     </button>
+//                                     <button
+//                                       type="button"
+//                                       disabled={incomplete || unchanged}
+//                                       onClick={() => handleUpdate(item)}
+//                                       className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-800 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-900 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-600/30 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+//                                     >
+//                                       <MdCheck size={16} />
+//                                       Save
+//                                     </button>
+//                                   </div>
+//                                 </div>
+//                                 {isPaidEdit && incomplete && (
+//                                   <p className="mt-2 text-xs text-slate-500">
+//                                     Choose the mode and date of payment to mark
+//                                     this rent as paid.
 //                                   </p>
 //                                 )}
-//                               </div>
-//                             </div>
-//                           </td>
-//                           <td className="whitespace-nowrap px-6 py-4 text-slate-600">
-//                             {formatMonth(item.month)}
-//                           </td>
-//                           <td className="whitespace-nowrap px-6 py-4">
-//                             <span className="text-slate-600">
-//                               {new Date(item.dueDate).toLocaleDateString("en-IN")}
-//                             </span>
-//                             {overdue && (
-//                               <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-rose-600">
-//                                 <MdWarningAmber size={14} />
-//                                 Overdue
-//                               </span>
-//                             )}
-//                           </td>
-//                           <td className="whitespace-nowrap px-6 py-4">
-//                             {isEditing ? (
-//                               <div className="flex items-center gap-2">
-//                                 <select
-//                                   aria-label="New status"
-//                                   value={updateStatus}
-//                                   onChange={(e) =>
-//                                     setUpdateStatus(e.target.value)
-//                                   }
-//                                   className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-600/10"
-//                                 >
-//                                   <option value="Paid">Paid</option>
-//                                   <option value="Unpaid">Unpaid</option>
-//                                   <option value="Pending">Pending</option>
-//                                 </select>
-//                                 <button
-//                                   aria-label="Save status"
-//                                   disabled={updateStatus === item.status}
-//                                   onClick={() =>
-//                                     handleStatusUpdate(item._id, updateStatus)
-//                                   }
-//                                   className="rounded-lg bg-blue-800 p-1.5 text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-300"
-//                                 >
-//                                   <MdCheck size={16} />
-//                                 </button>
-//                               </div>
-//                             ) : (
-//                               <StatusPill status={item.status} />
-//                             )}
-//                           </td>
-//                           <td className="whitespace-nowrap px-6 py-4 text-right font-semibold tabular-nums text-slate-900">
-//                             ₹{formatINR(item.amount)}
-//                           </td>
-//                           <td className="px-6 py-4 text-right">
-//                             <button
-//                               aria-label={
-//                                 isEditing ? "Cancel editing" : "Edit status"
-//                               }
-//                               onClick={() => {
-//                                 setEditId(isEditing ? null : item._id);
-//                                 setUpdateStatus(item?.status);
-//                               }}
-//                               className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-600/20"
-//                             >
-//                               {isEditing ? (
-//                                 <MdClose size={18} />
-//                               ) : (
-//                                 <MdEdit size={18} />
-//                               )}
-//                             </button>
-//                           </td>
-//                         </tr>
+//                               </td>
+//                             </tr>
+//                           )}
+//                         </Fragment>
 //                       );
 //                     })
 //                   )}
@@ -680,7 +872,7 @@
 //                   <tfoot className="border-t border-slate-200 bg-slate-50/70">
 //                     <tr>
 //                       <td
-//                         colSpan={4}
+//                         colSpan={5}
 //                         className="px-6 py-3.5 text-right font-medium text-slate-600"
 //                       >
 //                         Total
@@ -844,7 +1036,7 @@
 //                         key={key}
 //                         type="button"
 //                         aria-pressed={active}
-//                         onClick={() => setStatus(key)}
+//                         onClick={() => selectStatus(key)}
 //                         className={`flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-600/20 ${
 //                           active
 //                             ? "bg-white text-slate-900 shadow-sm"
@@ -860,6 +1052,40 @@
 //                   })}
 //                 </div>
 //               </div>
+
+//               {status === "Paid" && (
+//                 <div className="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-slate-50/60 p-4 sm:grid-cols-2 xl:grid-cols-1">
+//                   <div>
+//                     <Label htmlFor="paymentMode">Mode of payment</Label>
+//                     <select
+//                       id="paymentMode"
+//                       value={paymentMode}
+//                       onChange={(e) => setPaymentMode(e.target.value)}
+//                       required
+//                       className={FIELD}
+//                     >
+//                       <option value="">Select mode</option>
+//                       {PAYMENT_MODES.map((m) => (
+//                         <option key={m} value={m}>
+//                           {m}
+//                         </option>
+//                       ))}
+//                     </select>
+//                   </div>
+//                   <div>
+//                     <Label htmlFor="paymentDate">Date of payment</Label>
+//                     <input
+//                       id="paymentDate"
+//                       type="date"
+//                       max={todayStr()}
+//                       value={paymentDate}
+//                       onChange={(e) => setPaymentDate(e.target.value)}
+//                       required
+//                       className={FIELD}
+//                     />
+//                   </div>
+//                 </div>
+//               )}
 
 //               <div>
 //                 <Label htmlFor="notes">Notes (optional)</Label>
@@ -887,6 +1113,8 @@
 // };
 
 // export default Rent;
+
+
 
 
 
@@ -944,12 +1172,10 @@ const STATUS = {
 const STATUS_KEYS = ["Paid", "Unpaid", "Pending"];
 
 const PAYMENT_MODES = [
-  "Cash",
   "UPI",
-  "Bank transfer",
+  "Cash",
   "Cheque",
-  "Card",
-  "Other",
+  "Bank transfer",
 ];
 
 // Today as YYYY-MM-DD in the local time zone (for date inputs).

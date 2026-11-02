@@ -1,152 +1,3 @@
-// import {
-//   Document,
-//   Page,
-//   Text,
-//   View,
-//   Image,
-//   StyleSheet,
-// } from "@react-pdf/renderer";
-// // import logo from "../../../public/logo.jpeg"; // your logo
-
-// import { Font } from "@react-pdf/renderer";
-
-// Font.register({
-//   family: "Roboto",
-//   fonts: [
-//     {
-//       src: "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.ttf",
-//     },
-//     {
-//       src: "https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc9.ttf",
-//       fontWeight: "bold",
-//     },
-//   ],
-// });
-
-// const styles = StyleSheet.create({
-//   page: {
-//     paddingTop: 110,
-//     paddingBottom: 120,
-//     paddingHorizontal: 40,
-//     fontFamily: "Roboto",
-//     fontSize: 11,
-//   },
-
-//   header: {
-//     position: "absolute",
-//     top: 20,
-//     left: 40,
-//     right: 40,
-//     zIndex:10,
-//     borderBottom: "1 solid #0f5c8e",
-//     paddingBottom: 10,
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     alignItems: "center",
-//   },
-
-//   logo: {
-//     width: 130,
-//   },
-
-//   footer: {
-//     position: "absolute",
-//     bottom: 20,
-//     left: 40,
-//     right: 40,
-//     borderTop: "1 solid #0f5c8e",
-//     paddingTop: 10,
-//     textAlign: "center",
-//     fontSize: 9,
-//     color: "#555",
-//   },
-
-//   content: {
-//     marginTop: 20,
-//     marginBottom: 40,
-//   },
-//   signature: {
-//     position: "absolute",
-//     bottom: 80, // ⬅️ just above footer
-//     right: 40,
-//     textAlign: "right",
-//     fontSize: 11,
-//   },
-// });
-
-// const PdfTemplate = ({ children, showHeader = true }) => {
-//   // console.log("children", children);
-//   // const pageStyle = {
-//   //   ...styles.page,
-//   //   paddingTop: showHeader ? 110 : 60, // 🔥 key line
-//   // };
-//   return (
-//     <Document>
-//       <Page size="A4" style={styles.page} wrap>
-//         {/* Header */}
-//         <View style={styles.header} fixed>
-//           <Image src="/logo2.jpeg" style={styles.logo} />
-//           {showHeader && (
-//             <View>
-//               <Text
-//                 style={{
-//                   marginBottom: 4,
-//                   fontSize: 10, // 🔥 Bigger name
-//                   fontWeight: "bold",
-//                 }}
-//               >
-//                 Dr. Mayank Gupta (PT), BPT
-//               </Text>
-//               <Text style={{ fontSize: 8 , marginBottom: 4 }}>
-//                 Certified PNF Practitioner (IPNFA – Level 3A)
-//               </Text>
-//               <Text style={{ fontSize:8 , marginBottom: 4 }}>
-//                 Certified in Mulligan Concept Manual Therapy (C.O.M.M.T)
-//               </Text>
-//               <Text style={{ fontSize: 8 , marginBottom: 4 }}>
-//                 Certified Pilates Instructor
-//               </Text>
-//               <Text style={{ fontSize: 7 , marginBottom: 4 }}>
-//                 Registration No.: SCH-01/DEG2/25326/2014
-//               </Text>
-//             </View>
-//           )}
-//         </View>
-
-//         {/* Dynamic Content */}
-//         <View style={styles.content}>{children}</View>
-
-//         {/* Signature */}
-//         <View style={styles.signature} fixed>
-//           <Text>Authorized Signature</Text>
-//           <Text style={{ marginTop: 25, fontWeight: "bold" }}>
-//             Dr. Mayank Gupta (PT)
-//           </Text>
-//         </View>
-
-//         {/* Footer */}
-//         <View style={styles.footer} fixed>
-//           <Text>
-//             Bhawna Nager, Akhand Param Dham Near NDP'S School khandwa road
-//             indore 452020
-//             {/* Movement Rehab, Near NDPS School, Khandwa Road, Indore 452020 */}
-//           </Text>
-//           <Text>+91 6262 666 558 | movementrehab.in@gmail.com</Text>
-//           <Text
-//             render={({ pageNumber, totalPages }) =>
-//               `Page ${pageNumber} of ${totalPages}`
-//             }
-//           />
-//         </View>
-//       </Page>
-//     </Document>
-//   );
-// };
-
-// export default PdfTemplate;
-
-
-
 
 
 
@@ -484,9 +335,8 @@ const PdfTemplate = ({
 }) => {
   return (
     <Document
-      title="Movement Rehab"
-      author="Dr. Mayank Gupta (PT)"
-      subject="Physiotherapy and Rehabilitation"
+      title="Movement Rehab Center LLP"
+
     >
       <Page size="A4" style={styles.page} wrap>
         {/* Page identity */}
@@ -507,33 +357,6 @@ const PdfTemplate = ({
               </Text>
             </View>
 
-            {showHeader && (
-              <View style={styles.doctorColumn}>
-                <Text style={styles.credentialsLabel}>
-                  CLINICAL PRACTICE
-                </Text>
-
-                <Text style={styles.doctorName}>
-                  Dr. Mayank Gupta (PT), BPT
-                </Text>
-
-                <Text style={styles.doctorDetail}>
-                  Certified PNF Practitioner
-                </Text>
-
-                <Text style={styles.doctorDetail}>
-                  IPNFA Level 3A | Mulligan Concept Manual Therapy
-                </Text>
-
-                <Text style={styles.doctorDetail}>
-                  Certified Pilates Instructor
-                </Text>
-
-                <Text style={styles.registration}>
-                  Registration: SCH-01/DEG2/25326/2014
-                </Text>
-              </View>
-            )}
           </View>
 
           <View style={styles.headerRule} />
@@ -573,11 +396,11 @@ const PdfTemplate = ({
           <View style={styles.footerMain}>
             <View style={styles.footerLeft}>
               <Text style={styles.footerBrand}>
-                MOVEMENT REHAB
+                MOVEMENT REHAB Center LLP
               </Text>
 
               <Text style={styles.footerAddress}>
-                Bhawna Nagar, Akhand Param Dham, Near NDP's School
+                Akhand Param Dham, Near NDP's School
               </Text>
 
               <Text style={styles.footerAddress}>
@@ -591,7 +414,7 @@ const PdfTemplate = ({
               </Text>
 
               <Text style={styles.footerEmail}>
-                movementrehab.in@gmail.com
+                movementrehab.help@gmail.com
               </Text>
             </View>
           </View>
