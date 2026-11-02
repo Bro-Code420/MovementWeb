@@ -1,379 +1,3 @@
-// import { useState, useEffect } from "react";
-// import { PDFDownloadLink } from "@react-pdf/renderer";
-// import ExpenseReportPdf from "../Component/pdf/ExpenseReportPdf.jsx";
-// import { exportToExcel } from "../utils/exportToExcel";
-// import { fetchReport, MONTHS, YEARS, formatINR } from "../utils/reportFetch";
-// import {
-//   ReportPage,
-//   Card,
-//   ReportToolbar,
-//   Tile,
-//   TallyLine,
-//   Loading,
-//   ErrorState,
-//   EmptyState,
-//   EXCEL_BTN,
-//   PDF_BTN,
-//   PRIMARY_BTN,
-// } from "./reports/ReportUI";
-
-// const Expenses = () => {
-//   const [date, setDate] = useState("");
-//   const [category, setCategory] = useState("");
-//   const [notes, setNotes] = useState("");
-//   const [expenses, setExpenses] = useState([{ description: "", amount: 0 }]);
-//   const [selectedMonth, setSelectedMonth] = useState(null);
-//   const [selectedYear, setSelectedYear] = useState(null);
-
-//   const [expensesData, setExpensesData] = useState([]);
-//   const [loading, setLoading] = useState(false);
-//   const [error, setError] = useState("");
-
-//   const handleExpenseChange = (index, field, value) => {
-//     const updated = [...expenses];
-//     updated[index][field] = field === "amount" ? Number(value) : value;
-//     setExpenses(updated);
-//   };
-
-//   const addExpense = () => {
-//     setExpenses([...expenses, { description: "", amount: 0 }]);
-//   };
-
-//   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
-
-//   const fetchExpensesData = async () => {
-//     setLoading(true);
-//     setError("");
-//     try {
-//       const data = await fetchReport("expenses", {
-//         month: selectedMonth,
-//         year: selectedYear,
-//       });
-//       setExpensesData(data);
-//     } catch (err) {
-//       console.error("Error fetching expenses data:", err);
-//       setError("Failed to load expenses. Please try again.");
-//       setExpensesData([]);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchExpensesData();
-//     // eslint-disable-next-line react-hooks/exhaustive-deps
-//   }, [selectedMonth, selectedYear]);
-
-//   const filteredTotal = expensesData.reduce(
-//     (sum, e) => sum + (e.total || 0),
-//     0,
-//   );
-
-//   const entriesCount = expensesData?.length || 0;
-
-//   const selectedMonthLabel = selectedMonth
-//     ? MONTHS.find((m) => m.value === selectedMonth)?.label || "All Months"
-//     : "All Months";
-
-//   const monthName = selectedMonth
-//     ? MONTHS.find((m) => m.value === selectedMonth)?.label
-//     : null;
-
-//   const periodLabel = (() => {
-//     if (monthName && selectedYear) return `${monthName} ${selectedYear}`;
-//     if (!monthName && selectedYear) return `Year ${selectedYear}`;
-//     if (monthName && !selectedYear) return `${monthName} (all years)`;
-//     return "All time";
-//   })();
-
-//   const handleSubmit = async () => {
-//     const formData = {
-//       date,
-//       category,
-//       notes,
-//       expenses,
-//       total,
-//     };
-
-//     // console.log("Submitting form data:", formData);
-
-//     try {
-//       const response = await fetch(
-//         `${import.meta.env.VITE_BACKEND_URL}/api/report/expenses`,
-//         {
-//           method: "POST",
-//           headers: {
-//             "Content-Type": "application/json",
-//           },
-//           body: JSON.stringify(formData),
-//         },
-//       );
-
-//       const result = await response.json();
-//       // console.log("expenses saved:", result);
-//       alert(result.message);
-//       fetchExpensesData();
-//       // Reset form after submission
-//       setDate("");
-//       setCategory("");
-//       setNotes("");
-//       setExpenses([{ description: "", amount: 0 }]);
-//     } catch (error) {
-//       console.error("Error:", error);
-//       alert("Failed to submit expenses");
-//     }
-//   };
-
-//   const downloadExpensesExcel = () => {
-//     const rows = expensesData.flatMap((expense) =>
-//       expense.expenses.map((item, index) => ({
-//         Date:
-//           index === 0 ? new Date(expense.date).toLocaleDateString("en-IN") : "",
-//         Category: index === 0 ? expense.category : "",
-//         Description: item.description,
-//         Amount: item.amount,
-//         Notes: index === 0 ? expense.notes || "-" : "",
-//         Total: index === 0 ? expense.total : "",
-//       })),
-//     );
-
-//     exportToExcel({
-//       data: rows,
-//       fileName: `Expense_Report_${selectedMonth || "All_Months"}_${selectedYear || "All_Years"}`,
-//       sheetName: "Expenses",
-//     });
-//   };
-
-//   return (
-//     <ReportPage>
-//       {/* Toolbar: period filters + exports */}
-//       <ReportToolbar title="Expenses" periodLabel={periodLabel}>
-//         <div>
-//           <label className="block text-xs font-medium text-gray-500 mb-1">
-//             Month
-//           </label>
-//           <select
-//             className="border border-gray-300 p-2 rounded-lg text-sm"
-//             value={selectedMonth || ""}
-//             onChange={(e) =>
-//               setSelectedMonth(e.target.value ? Number(e.target.value) : null)
-//             }
-//           >
-//             <option value="">All Months</option>
-//             {MONTHS.map((m) => (
-//               <option key={m.value} value={m.value}>
-//                 {m.label}
-//               </option>
-//             ))}
-//           </select>
-//         </div>
-//         <div>
-//           <label className="block text-xs font-medium text-gray-500 mb-1">
-//             Year
-//           </label>
-//           <select
-//             className="border border-gray-300 p-2 rounded-lg text-sm"
-//             value={selectedYear || ""}
-//             onChange={(e) =>
-//               setSelectedYear(e.target.value ? Number(e.target.value) : null)
-//             }
-//           >
-//             <option value="">All Years</option>
-//             {YEARS.map((year) => (
-//               <option key={year} value={year}>
-//                 {year}
-//               </option>
-//             ))}
-//           </select>
-//         </div>
-
-//         <button onClick={downloadExpensesExcel} className={EXCEL_BTN}>
-//           Download Excel
-//         </button>
-
-//         <PDFDownloadLink
-//           document={
-//             <ExpenseReportPdf
-//               expenses={expensesData}
-//               month={selectedMonthLabel}
-//               year={selectedYear || "All Years"}
-//               total={formatINR(filteredTotal)}
-//             />
-//           }
-//           fileName={`Expense_Report_${selectedMonth || "All_Months"}_${selectedYear || "All_Years"}.pdf`}
-//         >
-//           {({ loading: pdfLoading }) => (
-//             <button className={PDF_BTN} disabled={pdfLoading}>
-//               {pdfLoading ? "Preparing PDF..." : "Download PDF"}
-//             </button>
-//           )}
-//         </PDFDownloadLink>
-//       </ReportToolbar>
-
-//       {/* Summary tiles */}
-//       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-//         <Tile
-//           emoji="🧾"
-//           label="Total Expenses"
-//           value={filteredTotal}
-//           tone="rose"
-//           hint="Money spent in this period"
-//         />
-//         <Tile
-//           emoji="🧮"
-//           label="Entries"
-//           value={String(entriesCount)}
-//           isCurrency={false}
-//           tone="gray"
-//         />
-//       </div>
-
-//       <TallyLine
-//         text={`Sum of ${entriesCount} expense entr${entriesCount === 1 ? "y" : "ies"} = ₹${formatINR(filteredTotal)}`}
-//       />
-
-//       {/* Create expense form */}
-//       <Card>
-//         <h2 className="text-xl font-bold text-gray-800 mb-6">Record Expenses</h2>
-
-//         {/* Expense Info */}
-//         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-//           <div>
-//             <label className="text-gray-500 block mb-1">Date</label>
-//             <input
-//               type="date"
-//               value={date}
-//               onChange={(e) => setDate(e.target.value)}
-//               className="w-full border border-gray-300 p-2 rounded"
-//             />
-//           </div>
-//           <div>
-//             <label className="text-gray-500 block mb-1">Category</label>
-//             <input
-//               type="text"
-//               value={category}
-//               onChange={(e) => setCategory(e.target.value)}
-//               placeholder="e.g. Utilities, Supplies"
-//               className="w-full border border-gray-300 p-2 rounded"
-//             />
-//           </div>
-//           <div className="sm:col-span-2">
-//             <label className="text-gray-500 block mb-1">Notes</label>
-//             <textarea
-//               value={notes}
-//               onChange={(e) => setNotes(e.target.value)}
-//               placeholder="Additional info..."
-//               className="w-full border border-gray-300 p-2 rounded"
-//             />
-//           </div>
-//         </div>
-
-//         {/* Expense Items */}
-//         <table className="w-full text-left mb-4">
-//           <thead>
-//             <tr className="bg-gray-200">
-//               <th className="p-2">Description</th>
-//               <th className="p-2">Amount</th>
-//             </tr>
-//           </thead>
-//           <tbody>
-//             {expenses.map((expense, idx) => (
-//               <tr key={idx} className="border-b">
-//                 <td className="p-2">
-//                   <input
-//                     type="text"
-//                     value={expense.description}
-//                     onChange={(e) =>
-//                       handleExpenseChange(idx, "description", e.target.value)
-//                     }
-//                     placeholder="Expense detail"
-//                     className="w-full border border-gray-300 p-1 rounded"
-//                   />
-//                 </td>
-//                 <td className="p-2">
-//                   <input
-//                     type="number"
-//                     min="0"
-//                     value={expense.amount}
-//                     onChange={(e) =>
-//                       handleExpenseChange(idx, "amount", e.target.value)
-//                     }
-//                     className="w-full border border-gray-300 p-1 rounded"
-//                   />
-//                 </td>
-//               </tr>
-//             ))}
-//           </tbody>
-//         </table>
-
-//         <button
-//           onClick={addExpense}
-//           className="mb-4 bg-blue-100 text-blue-700 px-3 py-1 rounded"
-//         >
-//           + Add Expense
-//         </button>
-
-//         {/* Total */}
-//         <div className="text-right text-lg font-bold mt-2 mb-6">
-//           Total: ₹ {formatINR(total)}
-//         </div>
-
-//         {/* Action Buttons */}
-//         <div className="flex justify-end space-x-4">
-//           <button onClick={handleSubmit} className={PRIMARY_BTN}>
-//             Save
-//           </button>
-//         </div>
-//       </Card>
-
-//       {/* Expense list */}
-//       {loading ? (
-//         <Loading />
-//       ) : error ? (
-//         <ErrorState message={error} />
-//       ) : entriesCount === 0 ? (
-//         <EmptyState label="No expenses found for this period." />
-//       ) : (
-//         <Card>
-//           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-//             {expensesData?.map((expense) => (
-//               <div
-//                 key={expense._id}
-//                 className="bg-white border border-gray-200 rounded-xl shadow-sm p-4"
-//               >
-//                 <h2 className="text-lg font-semibold text-indigo-600">
-//                   Category: {expense.category}
-//                 </h2>
-//                 <p className="text-sm text-gray-600 mb-1">
-//                   Date: {new Date(expense.date).toLocaleDateString("en-IN")}
-//                 </p>
-//                 <p className="text-sm text-gray-700 mb-2">
-//                   <strong>Notes:</strong>{" "}
-//                   <span className="block text-gray-600">{expense.notes}</span>
-//                 </p>
-
-//                 <h3 className="font-semibold text-gray-800 mb-1">Expenses:</h3>
-//                 <ul className="list-disc pl-5 text-sm text-gray-700 mb-2">
-//                   {expense.expenses.map((item) => (
-//                     <li key={item._id}>
-//                       {item.description} - ₹{formatINR(item.amount)}
-//                     </li>
-//                   ))}
-//                 </ul>
-
-//                 <div className="text-right font-bold text-rose-600">
-//                   Total: ₹{formatINR(expense.total)}
-//                 </div>
-//               </div>
-//             ))}
-//           </div>
-//         </Card>
-//       )}
-//     </ReportPage>
-//   );
-// };
-
-// export default Expenses;
 
 
 import { useEffect, useMemo, useState } from "react";
@@ -388,11 +12,35 @@ import { fetchReport, MONTHS, YEARS, formatINR } from "../utils/reportFetch";
   Same data and API as before: fetchReport("expenses", { month, year }),
   POST /api/report/expenses, Excel export and PDF export.
   The design lives in this file, so it no longer uses ./reports/ReportUI.
+
+  EDIT / DELETE
+  The two endpoints below are assumptions. Change them to match your backend:
+    PUT    {VITE_BACKEND_URL}/api/report/expenses/:id   (body: same shape as POST)
+    DELETE {VITE_BACKEND_URL}/api/report/expenses/:id
+  Both are expected to answer with { success: true|false, message?, expense? }.
+  The backend must also check that the caller is allowed to edit or delete
+  expenses. Hiding buttons in the UI is not security.
 */
 
 const PAGE_SIZE = 10;
 const DEFAULT_CATEGORIES = ["Utilities", "Supplies", "Maintenance", "Marketing", "Equipment", "Travel", "Other"];
 const BAR_COLORS = ["bg-[#0B4BAA]", "bg-[#00C2CB]", "bg-amber-400", "bg-emerald-500", "bg-rose-400", "bg-slate-400"];
+
+const UPDATE_EXPENSE_PATH = (id) => `/api/report/expenses/${id}`;
+const DELETE_EXPENSE_PATH = (id) => `/api/report/expenses/${id}`;
+
+const expenseApi = async (path, method, body) => {
+  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      token: localStorage.getItem("token"),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const result = await res.json();
+  return { ok: res.ok, result };
+};
 
 const rupee = (n) => `₹${formatINR(n)}`;
 const compact = (n) => {
@@ -421,6 +69,7 @@ const ICONS = {
   close: "M6 18L18 6M6 6l12 12",
   chevron: "M9 18l6-6-6-6",
   trash: "M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6",
+  edit: "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
   alert: "M12 8v4M12 16h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   check: "M20 6L9 17l-5-5",
   refresh: "M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15",
@@ -504,14 +153,23 @@ const Expenses = () => {
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState({});
 
-  // record-expense form (slide-over panel)
+  // add / edit expense form (slide-over panel)
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null); // null = adding a new expense
   const [date, setDate] = useState(todayISO());
   const [category, setCategory] = useState("");
+  const [billerName, setBillerName] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
+  const [billerId, setBillerId] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState([newItem()]);
   const [saving, setSaving] = useState(false);
   const [attempted, setAttempted] = useState(false);
+
+  // delete confirmation
+  const [deleting, setDeleting] = useState(null); // the expense being deleted
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const [pdfBusy, setPdfBusy] = useState(false);
   const [toast, setToast] = useState(null);
@@ -546,19 +204,48 @@ const Expenses = () => {
     setPage(1);
   }, [selectedMonth, selectedYear, query, sortBy]);
 
+  const resetForm = () => {
+    setDate(todayISO());
+    setCategory("");
+    setBillerName("");
+    setGstNumber("");
+    setBillerId("");
+    setNotes("");
+    setItems([newItem()]);
+    setAttempted(false);
+  };
+
+  // Close the panel. If it was an edit, clear the form so "Add expense" starts empty.
+  const closePanel = () => {
+    if (saving) return;
+    setShowForm(false);
+    if (editingId) {
+      setEditingId(null);
+      resetForm();
+    }
+  };
+
   useEffect(() => {
     if (!showForm) return;
-    const onKey = (e) => e.key === "Escape" && !saving && setShowForm(false);
+    const onKey = (e) => e.key === "Escape" && closePanel();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showForm, saving]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm, saving, editingId]);
+
+  useEffect(() => {
+    if (!deleting) return;
+    const onKey = (e) => e.key === "Escape" && !deleteBusy && setDeleting(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [deleting, deleteBusy]);
 
   /* ---------- derived ---------- */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return expensesData;
     return expensesData.filter((e) => {
-      const text = `${e.category || ""} ${e.notes || ""} ${(e.expenses || []).map((i) => i.description).join(" ")}`.toLowerCase();
+      const text = `${e.category || ""} ${e.billerName || ""} ${e.gstNumber || ""} ${e.billerId || ""} ${e.notes || ""} ${(e.expenses || []).map((i) => i.description).join(" ")}`.toLowerCase();
       return text.includes(q);
     });
   }, [expensesData, query]);
@@ -624,21 +311,35 @@ const Expenses = () => {
   if (!category.trim()) formErrors.push("Enter a category.");
   if (validItems.length === 0) formErrors.push("Add at least one item with a description and an amount.");
 
-  const openForm = () => {
+  const openAdd = () => {
+    if (editingId) {
+      setEditingId(null);
+      resetForm();
+    }
+    setAttempted(false);
+    setShowForm(true);
+  };
+
+  const openEdit = (expense) => {
+    setEditingId(expense._id);
+    setDate(expense.date ? String(expense.date).slice(0, 10) : todayISO());
+    setCategory(expense.category || "");
+    setBillerName(expense.billerName || "");
+    setGstNumber(expense.gstNumber || "");
+    setBillerId(expense.billerId || "");
+    setNotes(expense.notes || "");
+    const list = (expense.expenses || []).map((it) => ({
+      id: it._id || Date.now() + Math.random(),
+      description: it.description || "",
+      amount: it.amount === undefined || it.amount === null ? "" : String(it.amount),
+    }));
+    setItems(list.length ? list : [newItem()]);
     setAttempted(false);
     setShowForm(true);
   };
 
   const updateItem = (id, key, val) => setItems((list) => list.map((r) => (r.id === id ? { ...r, [key]: val } : r)));
   const removeItem = (id) => setItems((list) => (list.length > 1 ? list.filter((r) => r.id !== id) : list));
-
-  const resetForm = () => {
-    setDate(todayISO());
-    setCategory("");
-    setNotes("");
-    setItems([newItem()]);
-    setAttempted(false);
-  };
 
   const handleSubmit = async () => {
     setAttempted(true);
@@ -648,31 +349,78 @@ const Expenses = () => {
     const formData = {
       date,
       category: category.trim(),
+      billerName: billerName.trim(),
+      gstNumber: gstNumber.trim().toUpperCase(),
+      billerId: billerId.trim(),
       notes: notes.trim(),
       expenses: validItems.map((i) => ({ description: i.description.trim(), amount: Number(i.amount) })),
       total: validItems.reduce((s, i) => s + Number(i.amount), 0),
     };
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/report/expenses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const result = await response.json();
-      if (!response.ok || result?.success === false) {
-        showToast(result?.message || "Failed to submit expenses", "error");
+      if (editingId) {
+        // ----- edit existing expense -----
+        const { ok, result } = await expenseApi(UPDATE_EXPENSE_PATH(editingId), "PUT", formData);
+        if (!ok || result?.success === false) {
+          showToast(result?.message || "Failed to update the expense", "error");
+        } else {
+          setExpensesData((list) =>
+            list.map((e) => (e._id === editingId ? { ...e, ...formData, ...(result?.expense || {}) } : e))
+          );
+          showToast(result?.message || "Expense updated");
+          setShowForm(false);
+          setEditingId(null);
+          resetForm();
+        }
       } else {
-        showToast(result?.message || "Expenses saved");
-        setShowForm(false);
-        resetForm();
-        fetchExpensesData();
+        // ----- add new expense -----
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/report/expenses`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+        const result = await response.json();
+        if (!response.ok || result?.success === false) {
+          showToast(result?.message || "Failed to submit expenses", "error");
+        } else {
+          showToast(result?.message || "Expenses saved");
+          setShowForm(false);
+          resetForm();
+          fetchExpensesData();
+        }
       }
     } catch (err) {
       console.error("Error:", err);
-      showToast("Failed to submit expenses", "error");
+      showToast(editingId ? "Failed to update the expense" : "Failed to submit expenses", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  /* ---------- delete ---------- */
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setDeleteError("");
+    try {
+      const { ok, result } = await expenseApi(DELETE_EXPENSE_PATH(deleting._id), "DELETE");
+      if (!ok || result?.success === false) {
+        setDeleteError(result?.message || "Could not delete the expense.");
+      } else {
+        const id = deleting._id;
+        setExpensesData((list) => list.filter((e) => e._id !== id));
+        setOpen((o) => {
+          const { [id]: _removed, ...rest } = o;
+          return rest;
+        });
+        setDeleting(null);
+        showToast(result?.message || "Expense deleted");
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+      setDeleteError(err.message || "Could not delete the expense.");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -682,6 +430,9 @@ const Expenses = () => {
       (expense.expenses || []).map((item, index) => ({
         Date: index === 0 ? new Date(expense.date).toLocaleDateString("en-IN") : "",
         Category: index === 0 ? expense.category : "",
+        "Biller Name": index === 0 ? expense.billerName || "-" : "",
+        "GST Number": index === 0 ? expense.gstNumber || "-" : "",
+        "Biller ID": index === 0 ? expense.billerId || "-" : "",
         Description: item.description,
         Amount: item.amount,
         Notes: index === 0 ? expense.notes || "-" : "",
@@ -722,6 +473,7 @@ const Expenses = () => {
   };
 
   const noData = !loading && !error && filtered.length === 0;
+  const isEditing = !!editingId;
 
   return (
     <div className="space-y-6">
@@ -775,7 +527,7 @@ const Expenses = () => {
             {pdfBusy ? "Preparing..." : "PDF"}
           </button>
           <button
-            onClick={openForm}
+            onClick={openAdd}
             className="inline-flex items-center gap-2 rounded-xl bg-[#0B4BAA] px-5 py-2 text-sm font-semibold text-white shadow-md shadow-[#0B4BAA]/30 transition hover:bg-[#093d8c] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C2CB] focus-visible:ring-offset-2"
           >
             <Icon d={ICONS.plus} className="h-4 w-4" /> Add expense
@@ -817,7 +569,7 @@ const Expenses = () => {
             <Card className="py-14 text-center">
               <p className="text-lg font-semibold text-slate-700">No expenses found</p>
               <p className="mt-1 text-sm text-slate-400">Try another period or clear the search, or add a new expense.</p>
-              <button onClick={openForm} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#0B4BAA] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#093d8c] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C2CB] focus-visible:ring-offset-2">
+              <button onClick={openAdd} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#0B4BAA] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#093d8c] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C2CB] focus-visible:ring-offset-2">
                 <Icon d={ICONS.plus} className="h-4 w-4" /> Add expense
               </button>
             </Card>
@@ -856,7 +608,7 @@ const Expenses = () => {
                 <div className="flex flex-col gap-3 border-b border-slate-100 p-5 md:flex-row md:items-center md:justify-between">
                   <div>
                     <h3 className="text-base font-bold text-slate-800">All expense entries</h3>
-                    <p className="text-sm text-slate-500">Select a row to see its items.</p>
+                    <p className="text-sm text-slate-500">Select a row to see its items, or use the edit and delete buttons.</p>
                   </div>
                   <div className="flex flex-wrap gap-2.5">
                     <div className="relative">
@@ -879,15 +631,17 @@ const Expenses = () => {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm">
+                  <table className="w-full min-w-[900px] text-left text-sm">
                     <thead>
                       <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                         <th className="w-10 px-4 py-3" />
                         <th className="px-3 py-3 font-semibold">Date</th>
                         <th className="px-3 py-3 font-semibold">Category</th>
+                        <th className="px-3 py-3 font-semibold">Biller</th>
                         <th className="px-3 py-3 font-semibold">Notes</th>
                         <th className="px-3 py-3 text-right font-semibold">Items</th>
-                        <th className="px-4 py-3 text-right font-semibold">Total</th>
+                        <th className="px-3 py-3 text-right font-semibold">Total</th>
+                        <th className="px-4 py-3 text-right font-semibold">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -916,14 +670,53 @@ const Expenses = () => {
                               <td className="px-3 py-3">
                                 <span className="inline-flex rounded-full bg-[#0B4BAA]/10 px-2.5 py-1 text-xs font-semibold text-[#0B4BAA]">{expense.category || "Uncategorised"}</span>
                               </td>
+                              <td className="px-3 py-3 text-slate-600">
+                                <div className="min-w-[140px]">
+                                  <p className="font-medium text-slate-700">{expense.billerName || "-"}</p>
+                                  <p className="text-xs text-slate-400">{expense.billerId || "-"}</p>
+                                </div>
+                              </td>
                               <td className="max-w-[260px] px-3 py-3 text-slate-600"><p className="truncate">{expense.notes || <span className="text-slate-300">-</span>}</p></td>
                               <td className="px-3 py-3 text-right text-slate-600">{list.length}</td>
-                              <td className="px-4 py-3 text-right font-bold text-rose-600">{rupee(expense.total)}</td>
+                              <td className="px-3 py-3 text-right font-bold text-rose-600">{rupee(expense.total)}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openEdit(expense);
+                                    }}
+                                    aria-label={`Edit ${expense.category || "expense"} entry`}
+                                    title="Edit expense"
+                                    className="rounded-lg p-2 text-slate-400 transition hover:bg-[#0B4BAA]/10 hover:text-[#0B4BAA] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C2CB]"
+                                  >
+                                    <Icon d={ICONS.edit} className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeleteError("");
+                                      setDeleting(expense);
+                                    }}
+                                    aria-label={`Delete ${expense.category || "expense"} entry`}
+                                    title="Delete expense"
+                                    className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                                  >
+                                    <Icon d={ICONS.trash} className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
                             {isOpen && (
                               <tr className="bg-slate-50/70">
                                 <td />
-                                <td colSpan={5} className="px-3 py-3">
+                                <td colSpan={7} className="px-3 py-3">
+                                  <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-500">
+                                    <span>GST Number: <b className="text-slate-700">{expense.gstNumber || "-"}</b></span>
+                                    <span>Biller ID: <b className="text-slate-700">{expense.billerId || "-"}</b></span>
+                                  </div>
                                   <table className="w-full max-w-xl text-sm">
                                     <thead>
                                       <tr className="text-xs uppercase tracking-wider text-slate-400">
@@ -978,23 +771,25 @@ const Expenses = () => {
         </>
       )}
 
-      {/* Record expense panel */}
+      {/* Add / edit expense panel */}
       {showForm && (
         <>
-          <div className="fixed inset-0 z-[65] bg-slate-900/40" onClick={() => !saving && setShowForm(false)} />
+          <div className="fixed inset-0 z-[65] bg-slate-900/40" onClick={closePanel} />
           <aside
             role="dialog"
             aria-modal="true"
-            aria-label="Record expense"
+            aria-label={isEditing ? "Edit expense" : "Record expense"}
             style={{ animation: "expSlide .2s ease-out" }}
             className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-lg flex-col bg-white shadow-2xl"
           >
             <div className="flex items-center justify-between bg-gradient-to-br from-[#0B4BAA] to-[#082F6B] px-6 py-5 text-white">
               <div>
-                <h2 className="text-lg font-bold">Record expense</h2>
-                <p className="text-sm text-blue-100">Add one or more items under a category.</p>
+                <h2 className="text-lg font-bold">{isEditing ? "Edit expense" : "Record expense"}</h2>
+                <p className="text-sm text-blue-100">
+                  {isEditing ? "Change the details, then save." : "Add one or more items under a category."}
+                </p>
               </div>
-              <button onClick={() => !saving && setShowForm(false)} aria-label="Close panel" className="rounded-lg p-1.5 text-blue-100 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white">
+              <button onClick={closePanel} aria-label="Close panel" className="rounded-lg p-1.5 text-blue-100 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white">
                 <Icon d={ICONS.close} />
               </button>
             </div>
@@ -1019,6 +814,21 @@ const Expenses = () => {
                   <datalist id="exp-categories">
                     {categoryOptions.map((c) => <option key={c} value={c} />)}
                   </datalist>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="exp-biller-name" className="mb-1.5 block text-sm font-semibold text-slate-700">Biller name</label>
+                  <input id="exp-biller-name" type="text" value={billerName} onChange={(e) => setBillerName(e.target.value)} placeholder="Supplier / vendor name" className={inputClass} />
+                </div>
+                <div>
+                  <label htmlFor="exp-biller-id" className="mb-1.5 block text-sm font-semibold text-slate-700">Biller ID</label>
+                  <input id="exp-biller-id" type="text" value={billerId} onChange={(e) => setBillerId(e.target.value)} placeholder="Vendor / biller ID" className={inputClass} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="exp-gst-number" className="mb-1.5 block text-sm font-semibold text-slate-700">GST number</label>
+                  <input id="exp-gst-number" type="text" value={gstNumber} onChange={(e) => setGstNumber(e.target.value.toUpperCase())} placeholder="e.g. 22AAAAA0000A1Z5" maxLength={15} className={inputClass} />
                 </div>
               </div>
 
@@ -1089,7 +899,7 @@ const Expenses = () => {
                 <p className="text-xl font-extrabold text-slate-900">{rupee(formTotal)}</p>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => !saving && setShowForm(false)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C2CB]">
+                <button onClick={closePanel} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C2CB]">
                   Cancel
                 </button>
                 <button
@@ -1098,12 +908,61 @@ const Expenses = () => {
                   className="inline-flex items-center gap-2 rounded-xl bg-[#0B4BAA] px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#0B4BAA]/30 transition hover:bg-[#093d8c] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C2CB] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {saving && <AiOutlineLoading3Quarters className="animate-spin" />}
-                  {saving ? "Saving..." : "Save"}
+                  {saving ? "Saving..." : isEditing ? "Save changes" : "Save"}
                 </button>
               </div>
             </div>
           </aside>
         </>
+      )}
+
+      {/* Delete confirmation */}
+      {deleting && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/50 p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !deleteBusy) setDeleting(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete expense"
+            className="w-full max-w-md rounded-2xl bg-white shadow-xl ring-1 ring-slate-200"
+          >
+            <div className="px-6 py-5">
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-900">Delete this expense?</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                The <b>{deleting.category || "Uncategorised"}</b> entry dated{" "}
+                <b>{new Date(deleting.date).toLocaleDateString("en-GB")}</b> ({rupee(deleting.total)}, {(deleting.expenses || []).length}{" "}
+                {(deleting.expenses || []).length === 1 ? "item" : "items"}) will be removed from the report and from the totals. This cannot be undone.
+              </p>
+              {deleteError && (
+                <p role="alert" className="mt-3 text-sm font-medium text-rose-600">{deleteError}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2.5 border-t border-slate-100 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setDeleting(null)}
+                disabled={deleteBusy}
+                autoFocus
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C2CB] disabled:opacity-50"
+              >
+                Keep expense
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleteBusy}
+                className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deleteBusy && <AiOutlineLoading3Quarters className="animate-spin" />}
+                {deleteBusy ? "Deleting..." : "Delete expense"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {toast && (
