@@ -1129,25 +1129,6 @@ import { fetchReport, MONTHS, YEARS, formatINR } from "../utils/reportFetch";
 
 const PAGE_SIZE = 10;
 
-const UPDATE_BILL_PATH = (id) => `/api/report/bill/${id}`;
-const DELETE_BILL_PATH = (id) => `/api/report/bill/${id}`;
-
-const billApi = async (path, method, body) => {
-  const token =
-    localStorage.getItem("token") || localStorage.getItem("webapptoken");
-  const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { token, Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return res.json();
-};
-
-const billKey = (bill) => bill._id || bill.billNumber;
-
 // Canonical received/paid figure for a bill.
 const received = (bill) =>
   bill.paymentStatus === "Paid"
@@ -1274,15 +1255,13 @@ const Segment = ({ title, value, onChange, options }) => (
             type="button"
             aria-pressed={on}
             onClick={() => onChange(o.value)}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C2CB] ${
-              on ? "bg-white text-[#0B4BAA] shadow-sm" : "text-slate-600 hover:text-[#0B4BAA]"
-            }`}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00C2CB] ${on ? "bg-white text-[#0B4BAA] shadow-sm" : "text-slate-600 hover:text-[#0B4BAA]"
+              }`}
           >
             {o.label}
             <span
-              className={`rounded-full px-1.5 text-[11px] ${
-                on ? "bg-[#0B4BAA]/10" : "bg-slate-200/70 text-slate-500"
-              }`}
+              className={`rounded-full px-1.5 text-[11px] ${on ? "bg-[#0B4BAA]/10" : "bg-slate-200/70 text-slate-500"
+                }`}
             >
               {o.count}
             </span>
@@ -1456,9 +1435,8 @@ const Modal = ({ title, onClose, busy, wide, children }) => {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`my-6 w-full rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 ${
-          wide ? "max-w-3xl" : "max-w-md"
-        }`}
+        className={`my-6 w-full rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 ${wide ? "max-w-3xl" : "max-w-md"
+          }`}
       >
         {children}
       </div>
@@ -2152,9 +2130,8 @@ const Bill = () => {
   const noBillsAtAll = !loading && !error && billData.length === 0;
   const noMatches = !loading && !error && billData.length > 0 && filteredBills.length === 0;
 
-  const scope = `${stats.n} ${stats.n === 1 ? "bill" : "bills"}${
-    chips.length ? " matching your filters" : ""
-  }`;
+  const scope = `${stats.n} ${stats.n === 1 ? "bill" : "bills"}${chips.length ? " matching your filters" : ""
+    }`;
 
   const opts = (labels, facet) =>
     labels.map(([value, label]) => ({
@@ -2170,11 +2147,10 @@ const Bill = () => {
         <div
           role="status"
           aria-live="polite"
-          className={`fixed right-6 top-6 z-[60] max-w-sm rounded-lg border px-4 py-3 text-sm font-medium shadow-lg ${
-            toast.type === "success"
+          className={`fixed right-6 top-6 z-[60] max-w-sm rounded-lg border px-4 py-3 text-sm font-medium shadow-lg ${toast.type === "success"
               ? "border-emerald-200 bg-emerald-50 text-emerald-900"
               : "border-rose-200 bg-rose-50 text-rose-900"
-          }`}
+            }`}
         >
           {toast.text}
         </div>
@@ -2574,9 +2550,8 @@ const Bill = () => {
                               <button
                                 type="button"
                                 aria-expanded={isOpen}
-                                aria-label={`${isOpen ? "Hide" : "Show"} items for bill ${
-                                  bill.billNumber
-                                }`}
+                                aria-label={`${isOpen ? "Hide" : "Show"} items for bill ${bill.billNumber
+                                  }`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setOpen((o) => ({ ...o, [key]: !o[key] }));
@@ -2616,9 +2591,8 @@ const Bill = () => {
                               {rupee(received(bill))}
                             </td>
                             <td
-                              className={`px-3 py-3 text-right font-bold ${
-                                out > 0 ? "text-rose-600" : "text-slate-400"
-                              }`}
+                              className={`px-3 py-3 text-right font-bold ${out > 0 ? "text-rose-600" : "text-slate-400"
+                                }`}
                             >
                               {out > 0 ? rupee(out) : "-"}
                             </td>

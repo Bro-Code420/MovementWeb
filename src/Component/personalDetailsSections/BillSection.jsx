@@ -359,72 +359,30 @@ const BillSection = ({ fetchData, billing, patientDetail, attendance }) => {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      const token =
-        localStorage.getItem("token") || localStorage.getItem("webapptoken");
-
-      const response = await fetch(`${API}/api/report/bill/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { token, Authorization: `Bearer ${token}` } : {}),
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/report/bill/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: newStatus }),
         },
-        body: JSON.stringify({ paymentStatus: newStatus }),
-      });
+      );
 
-      let result;
-      try {
-        result = await response.json();
-      } catch {
-        result = null;
+      const result = await response.json();
+
+      console.log("result", result);
+
+      if (result.success) {
+        fetchData(); // refresh
+        setEditId(null);
+        setUpdateStatus(null);
+      } else {
+        alert(result.message);
+        setEditId(null);
+        setUpdateStatus(null);
       }
-
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.message || "Unable to update payment status");
-      }
-
-      await fetchData();
-      setEditId(null);
-      setUpdateStatus("");
-    } catch (error) {
-      console.error("Payment status update failed:", error);
-      alert(error.message);
-    }
-  };
-
-  const handleDeleteInvoice = async (bill) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete invoice ${bill.billNumber}? This action cannot be undone.`
-    );
-
-    if (!confirmed) return;
-
-    setDeletingId(bill._id);
-
-    try {
-      const token =
-        localStorage.getItem("token") || localStorage.getItem("webapptoken");
-
-      const response = await fetch(`${API}/api/report/bill/${bill._id}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { token, Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-
-      let result;
-      try {
-        result = await response.json();
-      } catch {
-        result = null;
-      }
-
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.message || "Unable to delete invoice");
-      }
-
-      alert("Invoice deleted successfully.");
-      await fetchData();
     } catch (error) {
       console.error("Invoice deletion failed:", error);
       alert(error.message);
@@ -450,7 +408,7 @@ const BillSection = ({ fetchData, billing, patientDetail, attendance }) => {
     return Math.min(
       total,
       Number(bill?.advancePayment || 0) +
-        Number(bill?.amountInWallet || 0)
+      Number(bill?.amountInWallet || 0)
     );
   };
 
@@ -481,11 +439,10 @@ const BillSection = ({ fetchData, billing, patientDetail, attendance }) => {
       <button
         onClick={() => goTo("/createBill")}
         disabled={remainingSessions === 0}
-        className={`px-3 py-1 mb-2 text-sm border rounded ${
-          remainingSessions === 0
+        className={`px-3 py-1 mb-2 text-sm border rounded ${remainingSessions === 0
             ? "opacity-50 cursor-not-allowed"
             : "hover:bg-gray-100"
-        }`}
+          }`}
       >
         Generate Bill
       </button>
@@ -569,9 +526,8 @@ const BillSection = ({ fetchData, billing, patientDetail, attendance }) => {
                       </div>
                     ) : (
                       <p
-                        className={`text-sm font-medium ${
-                          paid ? "text-green-600" : "text-red-500"
-                        }`}
+                        className={`text-sm font-medium ${paid ? "text-green-600" : "text-red-500"
+                          }`}
                       >
                         Payment Status: {bill?.paymentStatus || "Unpaid"}
                       </p>
