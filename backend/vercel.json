@@ -2,5 +2,5 @@
   "version": 2,
   "framework": null,
   "regions": ["bom1"],
-  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index.js" }]
 }
